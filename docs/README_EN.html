@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../icon.ico" type="image/x-icon">
+<title>Silanes Documentation</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    max-width: 860px;
+    margin: 40px auto;
+    padding: 0 20px;
+    color: #1a1a1a;
+    line-height: 1.7;
+    background: #fff;
+  }
+  h1 { font-size: 2em; border-bottom: 2px solid #0366d6; padding-bottom: 8px; }
+  h2 { font-size: 1.4em; margin-top: 32px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+  h3 { font-size: 1.1em; margin-top: 24px; }
+  code {
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.9em;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+  blockquote {
+    border-left: 4px solid #0366d6;
+    margin: 0;
+    padding: 8px 16px;
+    background: #f0f6ff;
+    color: #444;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th { background: #f5f5f5; font-weight: 600; }
+  tr:nth-child(even) { background: #fafafa; }
+  a { color: #0366d6; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>Silanes — Windows Service Generator Framework</h1>
+
+<p>Register any executable as a Windows system service via YAML config.</p>
+
+<blockquote>
+  Based on <a href="https://github.com/winsw/winsw">WinSW 2</a>.
+  Silanes retains the core service-wrapper concept, implemented in <strong>Rust</strong> with ongoing maintenance and feature extensions.
+</blockquote>
+
+<h2>Rust Implementation</h2>
+
+<p>Silanes is implemented in Rust (edition 2024) and compiled into a self-contained, single-file <code>silanes64.exe</code>:</p>
+
+<table>
+<tr><th>Item</th><th>Detail</th></tr>
+<tr><td>Implementation</td><td>Rust (edition 2024, self-contained, single file)</td></tr>
+<tr><td>Artifact</td><td><code>rust\publish\silanes64.exe</code></td></tr>
+<tr><td>Size</td><td>~3.5 MB</td></tr>
+<tr><td>Installer</td><td><code>silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></td></tr>
+<tr><td>Build tools</td><td>Rust stable + MSVC</td></tr>
+</table>
+
+<h2>Quick Start</h2>
+
+<pre><code># Install (requires administrator)
+silanes64.exe -m --install &lt;svc.yaml&gt;
+
+# Manage (the sil alias is available after a framework install; the -m prefix is optional)
+silanes64.exe -m --start     &lt;my-service&gt;
+silanes64.exe -m --stop      &lt;my-service&gt;
+silanes64.exe -m --restart   &lt;my-service&gt;
+silanes64.exe -m --status    &lt;my-service&gt;
+silanes64.exe -m --uninstall &lt;my-service&gt;
+silanes64.exe -m --delete    &lt;my-service&gt;
+silanes64.exe -m --list
+
+# Show help
+silanes64.exe help</code></pre>
+
+<h2>Commands</h2>
+
+<table>
+<tr><th>Command</th><th>Usage</th></tr>
+<tr><td><code>--install &lt;yaml&gt;</code></td><td>Install / update a service</td></tr>
+<tr><td><code>--uninstall &lt;name&gt;</code></td><td>Stop and uninstall</td></tr>
+<tr><td><code>--start &lt;name&gt;</code></td><td>Start a service</td></tr>
+<tr><td><code>--stop &lt;name&gt;</code></td><td>Stop a service</td></tr>
+<tr><td><code>--restart &lt;name&gt;</code></td><td>Restart a service</td></tr>
+<tr><td><code>--status &lt;name&gt;</code></td><td>Query service status</td></tr>
+<tr><td><code>--delete &lt;name&gt;</code></td><td>Force delete (stop + uninstall)</td></tr>
+<tr><td><code>--list</code></td><td>List all platform-deployed services (excludes inplace standalone services)</td></tr>
+<tr><td><code>help</code> / <code>-h</code> / <code>--help</code></td><td>Print help text</td></tr>
+</table>
+
+<blockquote>
+  Management commands are equivalent to the legacy <code>-m --xxx</code> form — the <code>-m</code> prefix is optional. After a framework install (<code>%ProgramFiles%\Silanes</code> is on PATH) you can use the <code>sil</code> shortcut alias instead of <code>silanes64.exe</code>.<br>
+  <code>--install-updater</code> / <code>--uninstall-updater</code> are internal commands invoked with the <code>-internal</code> prefix (not <code>-m</code>), used by the installer to register / remove the Service Updater.<br>
+  The service name <code>Silanes Service Updater</code> is reserved; service names are validated: empty names, <code>.</code> / <code>..</code> (path traversal), path separators and control characters are rejected, length capped at 256.
+</blockquote>
+
+<h2>Config Reference</h2>
+
+<h3>Required Fields</h3>
+
+<pre><code>service_name: my-service
+service_display_name: My Service
+service_description: Description of the service
+service_executable_path: C:\app\myapp.exe</code></pre>
+
+<h3>Optional Fields — Basics</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>service_executable_args</code></td><td>string</td><td><code>""</code></td><td>Command-line arguments for the target executable (passed through verbatim, quotes preserved)</td></tr>
+<tr><td><code>service_start_mode</code></td><td>string</td><td><code>"automatic"</code></td><td>Startup type: <code>automatic</code>, <code>delayed_auto</code>, <code>manual</code>, <code>disabled</code></td></tr>
+<tr><td><code>service_dependencies</code></td><td>string</td><td>none</td><td>Semicolon-separated list of services that must start first (e.g. <code>"EventLog;WinRM"</code>)</td></tr>
+<tr><td><code>service_account</code></td><td>string</td><td><code>LocalSystem</code></td><td>Windows account to run the service as (e.g. <code>"NT AUTHORITY\\NetworkService"</code>)</td></tr>
+<tr><td><code>service_password</code></td><td>string</td><td><code>""</code></td><td>Password for <code>service_account</code> (only needed for user accounts)</td></tr>
+<tr><td><code>env</code></td><td>object</td><td>none</td><td>Environment variables injected into the target process</td></tr>
+</table>
+
+<h3>Optional Fields — Lifecycle &amp; Hooks</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>failure_reset_sec</code></td><td>int</td><td><code>86400</code></td><td>Failure counter reset period in seconds</td></tr>
+<tr><td><code>restart_delay_ms</code></td><td>int</td><td><code>60000</code></td><td>Delay before auto-restart after crash in milliseconds</td></tr>
+<tr><td><code>kill_process_tree</code></td><td>bool</td><td><code>true</code></td><td>Whether to force-kill the whole process tree on stop</td></tr>
+<tr><td><code>prestart_command</code></td><td>string</td><td>none</td><td>Hook run before launching the target (<code>cmd /c</code> semantics, failure is non-fatal; killed after 60s timeout)</td></tr>
+<tr><td><code>poststop_command</code></td><td>string</td><td>none</td><td>Hook run after the target stops (injects <code>WINSGF_CHILD_PID</code> / <code>WINSGF_CHILD_EXIT_CODE</code>)</td></tr>
+</table>
+
+<h3>Optional Fields — Pre-Start Download</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>download_url</code></td><td>string</td><td>none</td><td>URL to fetch the target executable before launch</td></tr>
+<tr><td><code>download_to</code></td><td>string</td><td>none</td><td>Download destination; relative paths resolve against the service directory</td></tr>
+<tr><td><code>download_sha256</code></td><td>string</td><td>none</td><td>SHA-256 of the downloaded file (lowercase hex)</td></tr>
+<tr><td><code>download_fail_on_error</code></td><td>bool</td><td><code>true</code></td><td>Whether a failed download fails service startup</td></tr>
+</table>
+
+<blockquote>Security note: with <code>http://</code> and no <code>download_sha256</code>, <code>fail_on_error=true</code> refuses to start (protects against tampering in transit).</blockquote>
+
+<h3>Optional Fields — Logging</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>log_enabled</code></td><td>bool</td><td><code>true</code></td><td>Whether host logs are written</td></tr>
+<tr><td><code>log_dir</code></td><td>string</td><td>none</td><td>Log directory; relative paths resolve against the service directory</td></tr>
+<tr><td><code>log_max_size_mb</code></td><td>int</td><td><code>0</code></td><td>Max log file size (MB) before rollover; <code>0</code> means unlimited</td></tr>
+<tr><td><code>log_max_backup_count</code></td><td>int</td><td><code>5</code></td><td>Number of rolled-over backups to keep</td></tr>
+<tr><td><code>log_split_out_err</code></td><td>bool</td><td><code>false</code></td><td>Write child stderr to a separate <code>yyyy-MM-dd.err.log</code></td></tr>
+</table>
+
+<h3>Optional Fields — Standalone Mode (inplace)</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>deploy_inplace</code></td><td>bool</td><td><code>false</code></td><td>Register the current <code>silanes64.exe</code> in place instead of deploying to ProgramData; the YAML must be named after the exe and sit next to it (use the actual exe file name). Intended for embedding Silanes inside your own project; excluded from boot-time host upgrades and cleanup (upgrade the framework manually from the official Releases)</td></tr>
+</table>
+
+<h3>Full Example</h3>
+
+<pre><code>service_name: my-service
+service_display_name: My Service
+service_description: My application service
+service_executable_path: C:\app\myapp.exe
+service_executable_args: --mode production
+service_start_mode: delayed_auto
+service_dependencies: EventLog;WinRM
+service_account: NT AUTHORITY\NetworkService
+env:
+  MY_VAR: value
+  LOG_LEVEL: info
+failure_reset_sec: 86400
+restart_delay_ms: 60000
+kill_process_tree: true
+prestart_command: echo pre-start >> C:\app\hook.log
+poststop_command: echo child=%WINSGF_CHILD_PID% >> C:\app\hook.log
+download_url: https://example.com/app.exe
+download_to: C:\app\myapp.exe
+download_sha256: &lt;sha256&gt;
+download_fail_on_error: true
+log_enabled: true
+log_dir: logs
+log_max_size_mb: 10
+log_max_backup_count: 5
+log_split_out_err: true</code></pre>
+
+<h2>How It Works</h2>
+
+<ol>
+<li><strong>Install</strong>: Silanes deploys a copy of itself alongside the YAML config to <code>C:\ProgramData\Silanes\svcs\&lt;name&gt;\</code> (directory ACL is tightened to SYSTEM / Administrators only) and registers it via the SCM API. Reinstalling an existing name compares the source (executable path + arguments); a different source is rejected to avoid hijacking an unrelated service.</li>
+<li><strong>Runtime</strong>: When SCM starts the service, Silanes reads the YAML config and launches the target as a child process. If <code>download_url</code> is set, the target file is ensured to be ready before launch (with SHA-256 verification).</li>
+<li><strong>Logging</strong>: Child stdout/stderr and host lifecycle events are written to <code>logs\yyyy-MM-dd.log</code> (concurrent writes serialized by a mutex; size rollover and stderr splitting supported).</li>
+</ol>
+
+<h3>Service Recovery</h3>
+
+<ul>
+<li>SCM layer: on a crash the service restarts after <code>restart_delay_ms</code> (up to 2 times), with the failure counter reset after <code>failure_reset_sec</code>;</li>
+<li>Host layer: when the child exits with a <strong>non-zero exit code</strong>, the host restarts it automatically (up to 3 times) and stops the service once the limit is exceeded.</li>
+</ul>
+
+<h3>Hooks</h3>
+
+<ul>
+<li><strong>prestart</strong> (<code>prestart_command</code>): runs before the target is launched, <code>cmd /c</code> semantics (pipes / redirection supported); failure is non-fatal, and a 60-second timeout force-kills the whole hook tree (so a stuck hook cannot trip the SCM 30-second startup timeout).</li>
+<li><strong>poststop</strong> (<code>poststop_command</code>): runs after the target stops, with <code>WINSGF_CHILD_PID</code> / <code>WINSGF_CHILD_EXIT_CODE</code> injected; failure is only a warning.</li>
+</ul>
+
+<h3>Graceful Shutdown</h3>
+
+<p>On stop or system shutdown: GUI processes receive <code>WM_CLOSE</code> (sent to every top-level window) → console processes receive <code>Ctrl+C</code> (broadcast to the shared console; the host registers an ignore handler to avoid killing itself) → after a 10-second timeout the process is force-killed; <code>kill_process_tree=true</code> (default) also terminates the whole tree.</p>
+
+<h3>Standalone Mode (inplace)</h3>
+
+<p>With <code>deploy_inplace: true</code>, <code>--install</code> registers the current exe <strong>in place</strong>:</p>
+
+<ul>
+<li>No copy to ProgramData; the ImagePath points directly at the current exe;</li>
+<li><code>service_name</code> must equal the actual exe file name (e.g. <code>silanes64</code>; if you rename the exe, use its actual name), otherwise SCM cannot dispatch the service;</li>
+<li>Designed for embedding Silanes into your own project; excluded from boot-time host upgrades and cleanup. Developers must manually upgrade <code>silanes64.exe</code> from the <a href="https://github.com/NXRKYMANE/Silanes/releases">official Releases</a>.</li>
+</ul>
+
+<h3>Service Updater</h3>
+
+<p>The installer automatically registers a <strong>Service Updater</strong> (<code>Silanes Service Updater</code>) that upgrades all registered service hosts after system boot and cleans up residue:</p>
+
+<ol>
+<li><strong>Registration (install time)</strong> — The Inno Setup installer calls <code>silanes64.exe -internal --install-updater</code>, registering itself with the <code>-internal --updater</code> parameter as a Windows service with "Automatic (Delayed Start)" so host services start before the upgrade scan.</li>
+<li><strong>Boot-time execution</strong> — About 2 minutes after system startup, SCM launches the Service Updater. It scans <code>C:\ProgramData\Silanes\svcs\</code> for all hosts: a host version <strong>lower</strong> than the installed one → stop, replace the binary, restart; equal or higher → skip.</li>
+<li><strong>Stale-service cleanup</strong> — Removes services with a missing YAML, nonexistent target, or unparsable config (plus their host directories), and orphaned directories (SCM record gone but the <code>svcs</code> folder remains).</li>
+<li><strong>Log cleanup</strong> — Deletes logs older than 30 days in each service's log directory and the updater's own (<code>%ProgramData%\Silanes\updater\</code>), including <code>.err.log</code> split logs and <code>.N</code> rollover backups.</li>
+<li><strong>Auto-stop</strong> — The service stops itself after one full scan; it does not stay resident.</li>
+<li><strong>Removal (uninstall time)</strong> — The Inno Setup uninstaller calls <code>silanes64.exe -internal --uninstall-updater</code> to stop and remove the service.</li>
+</ol>
+
+<blockquote>
+  A <strong>system reboot</strong> is required after installation for the Service Updater to run on the next boot.
+</blockquote>
+
+<h2>Build</h2>
+
+<p>The one-click build script produces 2 artifacts (executable + installer):</p>
+
+<pre><code>.\BUILD.ps1</code></pre>
+
+<p><strong>Pipeline</strong>: build Rust → Rust unit tests → compile the installer with ISCC (Inno Setup 7).</p>
+
+<p>The script reads the version from <code>rust\Cargo.toml</code> and automatically syncs it (plus the copyright year) into <code>installer.iss</code>. A failing test aborts the pipeline; use <code>.\BUILD.ps1 -SkipTests</code> to skip testing.</p>
+
+<h3>Build Individually</h3>
+
+<pre><code>Set-Location rust
+cargo build --release                    # → rust\target\release\silanes64.exe
+Copy-Item target\release\silanes64.exe publish\silanes64.exe
+ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></pre>
+
+<h2>Installer Deployment</h2>
+
+<p>Pre-built installers are available on the <a href="https://github.com/NXRKYMANE/Silanes/releases">Releases</a> page.</p>
+
+<h3>Installer</h3>
+
+<table>
+<tr><th>Installer</th><th>Notes</th></tr>
+<tr><td><code>silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></td><td>Standard installer</td></tr>
+</table>
+
+<p>The installer places <code>silanes64.exe</code> in <code>%ProgramFiles%\Silanes\</code> and registers the Control Panel uninstall entry and the boot-time Service Updater.</p>
+
+<h3>Installer Features</h3>
+
+<ul>
+<li>Installs <code>silanes64.exe</code> to <code>%ProgramFiles%\Silanes\</code> and adds it to the system PATH</li>
+<li>Includes README documentation (English and Chinese) in HTML format</li>
+<li>Automatically registers the boot-time Service Updater (<code>--install-updater</code>)</li>
+<li>Registers an uninstall entry in Windows Control Panel</li>
+<li>Auto-detects old versions: silently upgrades on newer, prompts to reinstall on identical, warns on downgrade</li>
+<li>Finish page offers an optional checkbox to open the README; prompts to reboot after installation</li>
+</ul>
+
+<h3>Inno Setup Integration Tips</h3>
+
+<p>When embedding Silanes in your own Inno Setup installer, watch out for these common pitfalls:</p>
+
+<ol>
+<li><strong>YAML Backslashes</strong> — The install directory (e.g. <code>C:\Program Files\ASMMS</code>) contains backslashes. In YAML, unquoted values handle backslashes natively — simply avoid wrapping paths in quotes.</li>
+<li><strong>Silanes Not in PATH</strong> — The installer process may not have <code>silanes64.exe</code> in PATH even after installation. Read the full path from registry: <code>HKLM\Software\Microsoft\Windows\CurrentVersion\App Paths\silanes64.exe</code>.</li>
+<li><strong>Elevated Child Fails to Start</strong> — Inno's <code>Exec</code> returns <code>ERROR_ACCESS_DENIED</code> when directly starting a requireAdministrator child; route through <code>cmd.exe</code>: <code>Exec('{sys}\cmd.exe', '/c ""&lt;exe&gt;" &lt;args&gt;"', '', SW_HIDE, ewWaitUntilTerminated, ...)</code>.</li>
+<li><strong>Silent Install Language Dialog</strong> — With multiple languages, <code>/VERYSILENT</code> silent installs must pass <code>/LANG=</code> explicitly (<code>/LANG</code> takes precedence and suppresses the dialog); otherwise the language dialog still pops up and hangs.</li>
+</ol>
+
+<h2>Project Structure</h2>
+
+<pre><code>Silanes/
+├── rust/                      # Rust implementation
+│   ├── main.rs                # Entry: argument parsing and routing
+│   ├── service_core.rs        # Core: CLI, SCM API, Service Updater
+│   ├── service_host.rs        # Service host: launches target process + graceful stop
+│   ├── service_config.rs      # YAML config model (serde)
+│   ├── service_tests.rs       # Unit tests (38 tests, incl. process-tree integration test)
+│   ├── build.rs               # EXE version info / icon / language metadata (winresource)
+│   ├── Cargo.toml             # Project config (release speed optimizations)
+│   ├── Cargo.lock             # Dependency lock file
+│   └── installer.iss          # Inno Setup install script
+├── docs/                      # Chinese &amp; English HTML docs
+│   ├── README_CN.html         # Chinese HTML documentation (shipped with installers)
+│   └── README_EN.html         # English HTML documentation (shipped with installers)
+├── misc/                      # Misc resources
+│   ├── sil.cmd                # sil shortcut alias (copied by the installer)
+│   └── images/                # Icons and images
+│       ├── Proj.ico           # Program icon (installer + distribution)
+│       ├── Proj.png           # Project icon
+│       ├── Background.bmp     # Installer wizard background
+│       ├── Rust.bmp           # Installer wizard small image
+│       └── Rust.png           # Project image
+├── BUILD.ps1                  # One-click build script (Rust build + tests + installer)
+├── .github/                   # GitHub community templates (issues / PR)
+├── AGENTS.md                  # AI collaboration rules
+├── CODE_OF_CONDUCT.md         # Code of conduct
+├── CONTRIBUTING.md            # Contributing guidelines
+├── SECURITY.md                # Security policy
+├── LICENSE                    # License
+├── README.md                  # Chinese documentation
+└── README_EN.md               # English documentation</code></pre>
+
+<h2>Testing</h2>
+
+<p>Rust automated tests cover input validation, startup-mode parsing, log cleanup, process-tree collection, ACL permission checks, downloading, and other core logic:</p>
+
+<pre><code># Rust (38 tests, incl. a real process-tree integration test)
+Set-Location rust
+cargo test</code></pre>
+
+<ul>
+<li>Tests are consolidated in <code>rust\service_tests.rs</code>; the test build never ships in the release binary;</li>
+<li>Security boundaries such as path traversal, control-character injection, and SDDL permission checks are covered.</li>
+</ul>
+
+<h2>Requirements</h2>
+
+<ul>
+<li>Windows 10+ x64</li>
+<li>Administrator privileges</li>
+<li>Build tools (build only):
+  <ul>
+    <li>Rust stable (edition 2024) + MSVC linker (Visual Studio C++ Build Tools) — to build the Rust binary</li>
+    <li>Inno Setup 7 — to build the installer (default path <code>C:\Program Files\Inno Setup 7\ISCC.exe</code>)</li>
+  </ul>
+</li>
+</ul>
+
+<h2>Sponsor</h2>
+
+<p>If this project helps you, consider <a href="https://ifdian.net/a/NXRKYMANE">sponsoring</a>.</p>
+
+<h2>License</h2>
+
+<p>Copyright © 2026 NXRKYMANE SOFTWARE</p>
+
+</body>
+</html>

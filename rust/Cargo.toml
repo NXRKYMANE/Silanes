@@ -1,0 +1,45 @@
+[package]
+name = "silanes"
+version = "26.4.0"
+edition = "2024"
+
+[[bin]]
+name = "silanes64"
+path = "main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+chrono = "0.4"
+# 启动前下载: blocking + rustls（免 OpenSSL 系统依赖）
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+# 下载文件 SHA-256 校验
+sha2 = "0.10"
+
+[dependencies.windows]
+version = "0.58"
+features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Security",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Registry",
+    "Win32_System_Services",
+    "Win32_System_StationsAndDesktops",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Storage_FileSystem",
+]
+
+[build-dependencies]
+winresource = "0.1.31"
+chrono = "0.4"
+
+# 发布构建: 速度优先优化 + 裁剪符号 + 链接期优化
+# （不能用 panic="abort": 代码依赖 catch_unwind 做配置解析兜底）
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1
