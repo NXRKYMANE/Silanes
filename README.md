@@ -15,6 +15,8 @@
 > 基于 [WinSW 2](https://github.com/winsw/winsw)。
 > Silanes 保留核心服务包装概念，以 **Rust** 实现，持续维护扩展。
 
+> 我只是一个普通高中生，项目初期功能和漏洞波动较大，更新频率也非常高，望请各位开发者大佬谅解。
+
 ## ⚡ Rust 实现
 
 Silanes 由 Rust（edition 2024）实现，编译为自包含单文件 `silanes64.exe`：

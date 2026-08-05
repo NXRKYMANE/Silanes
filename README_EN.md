@@ -15,6 +15,8 @@ Register any executable as a Windows system service via YAML config. [中文文�
 > Based on [WinSW 2](https://github.com/winsw/winsw).
 > Silanes retains the core service-wrapper concept, implemented in **Rust** with ongoing maintenance and feature extensions.
 
+> I'm just an ordinary high school student. The project is in its early stage — functionality and bugs may fluctuate, and updates are very frequent. Thank you for your understanding, fellow developers.
+
 ## ⚡ Rust Implementation
 
 Silanes is implemented in Rust (edition 2024) and compiled into a self-contained, single-file `silanes64.exe`:
