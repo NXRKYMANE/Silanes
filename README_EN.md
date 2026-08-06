@@ -69,7 +69,7 @@ sil help
 
 ## ⚙️ Config Reference
 
-### 📌 Required Fields
+### Required Fields
 
 ```yaml
 service_name: my-service
@@ -78,7 +78,7 @@ service_description: Description of the service
 service_executable_path: C:\app\myapp.exe
 ```
 
-### 🔧 Optional Fields — Basics
+### Optional Fields — Basics
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -89,7 +89,7 @@ service_executable_path: C:\app\myapp.exe
 | `service_password` | string | `""` | Password for `service_account` (only needed for user accounts) |
 | `env` | object | none | Environment variables injected into the target process |
 
-### 🔄 Optional Fields — Lifecycle & Hooks
+### Optional Fields — Lifecycle & Hooks
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -99,7 +99,7 @@ service_executable_path: C:\app\myapp.exe
 | `prestart_command` | string | none | Hook run before launching the target (`cmd /c` semantics, failure is non-fatal; killed after 60s timeout) |
 | `poststop_command` | string | none | Hook run after the target stops (injects `WINSGF_CHILD_PID` / `WINSGF_CHILD_EXIT_CODE`) |
 
-### ⬇️ Optional Fields — Pre-Start Download
+### Optional Fields — Pre-Start Download
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -110,7 +110,7 @@ service_executable_path: C:\app\myapp.exe
 
 > Security note: with `http://` and no `download_sha256`, `fail_on_error=true` refuses to start (protects against tampering in transit).
 
-### 📝 Optional Fields — Logging
+### Optional Fields — Logging
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -120,13 +120,13 @@ service_executable_path: C:\app\myapp.exe
 | `log_max_backup_count` | int | `5` | Number of rolled-over backups to keep |
 | `log_split_out_err` | bool | `false` | Write child stderr to a separate `yyyy-MM-dd.err.log` |
 
-### 📦 Optional Fields — Standalone Mode (inplace)
+### Optional Fields — Standalone Mode (inplace)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `deploy_inplace` | bool | `false` | Register the current `silanes64.exe` in place instead of deploying to ProgramData; the YAML must be named after the exe and sit next to it (use the actual exe file name). Intended for embedding Silanes inside your own project; excluded from boot-time host upgrades and cleanup — upgrade the framework manually from the official Releases |
 
-### 📄 Full Example
+### Full Example
 
 ```yaml
 service_name: my-service
@@ -162,21 +162,21 @@ log_split_out_err: true
 2. **Runtime**: When SCM starts the service, Silanes reads the YAML config and launches the target as a child process. If `download_url` is set, the target file is ensured to be ready before launch (with SHA-256 verification).
 3. **Logging**: Child stdout/stderr and host lifecycle events are written to `logs\yyyy-MM-dd.log` (concurrent writes serialized by a mutex; size rollover and stderr splitting supported).
 
-### ♻️ Service Recovery
+### Service Recovery
 
 - SCM layer: on a crash the service restarts after `restart_delay_ms` (up to 2 times), with the failure counter reset after `failure_reset_sec`;
 - Host layer: when the child exits with a **non-zero exit code**, the host restarts it automatically (up to 3 times) and stops the service once the limit is exceeded.
 
-### 🪝 Hooks
+### Hooks
 
 - **prestart** (`prestart_command`): runs before the target is launched, `cmd /c` semantics (pipes / redirection supported); failure is non-fatal, and a 60-second timeout force-kills the whole hook tree (so a stuck hook cannot trip the SCM 30-second startup timeout).
 - **poststop** (`poststop_command`): runs after the target stops, with `WINSGF_CHILD_PID` / `WINSGF_CHILD_EXIT_CODE` injected; failure is only a warning.
 
-### 🌙 Graceful Shutdown
+### Graceful Shutdown
 
 On stop or system shutdown: GUI processes receive `WM_CLOSE` (sent to every top-level window) → console processes receive `Ctrl+C` (broadcast to the shared console; the host registers an ignore handler to avoid killing itself) → after a 10-second timeout the process is force-killed; `kill_process_tree=true` (default) also terminates the whole tree.
 
-### 🧩 Standalone Mode (inplace)
+### Standalone Mode (inplace)
 
 With `deploy_inplace: true`, `--install` registers the current exe **in place**:
 
@@ -184,7 +184,7 @@ With `deploy_inplace: true`, `--install` registers the current exe **in place**:
 - `service_name` must equal the actual exe file name (e.g. `silanes64`; if you rename the exe, use its actual name), otherwise SCM cannot dispatch the service;
 - Designed for embedding Silanes into your own project; excluded from boot-time host upgrades and cleanup. Developers must manually upgrade `silanes64.exe` from the [official Releases](https://github.com/NXRKYMANE/Silanes/releases).
 
-### 📡 Service Updater
+### Service Updater
 
 The installer automatically registers a **Service Updater** (`Silanes Service Updater`) that upgrades all registered service hosts after system boot and cleans up residue:
 
@@ -209,7 +209,7 @@ The one-click build script produces 2 artifacts (executable + installer):
 
 The script reads the version from `rust\Cargo.toml` and automatically syncs it (plus the copyright year) into `installer.iss`. A failing test aborts the pipeline; use `.\BUILD.ps1 -SkipTests` to skip testing.
 
-### 🛠️ Build Individually
+### Build Individually
 
 ```powershell
 Set-Location rust
@@ -222,7 +222,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 
 Pre-built installers are available on the [Releases](https://github.com/NXRKYMANE/Silanes/releases) page.
 
-### 📦 Installer
+### Installer
 
 | Installer | Notes |
 |---|---|
@@ -230,7 +230,7 @@ Pre-built installers are available on the [Releases](https://github.com/NXRKYMAN
 
 The installer places `silanes64.exe` in `%ProgramFiles%\Silanes\` and registers the Control Panel uninstall entry and the boot-time Service Updater.
 
-### ✨ Installer Features
+### Installer Features
 
 - Installs `silanes64.exe` to `%ProgramFiles%\Silanes\` and adds it to the system PATH
 - Includes README documentation (English and Chinese) in HTML format
@@ -239,7 +239,7 @@ The installer places `silanes64.exe` in `%ProgramFiles%\Silanes\` and registers 
 - Auto-detects old versions: silently upgrades on newer, prompts to reinstall on identical, warns on downgrade
 - Finish page offers an optional checkbox to open the README; prompts to reboot after installation
 
-### ⚠️ Inno Setup Integration Tips
+### Inno Setup Integration Tips
 
 When embedding Silanes in your own Inno Setup installer, watch out for these common pitfalls:
 

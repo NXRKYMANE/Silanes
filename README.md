@@ -69,7 +69,7 @@ sil help
 
 ## ⚙️ 配置参考
 
-### 📌 必填字段
+### 必填字段
 
 ```yaml
 service_name: my-service
@@ -78,7 +78,7 @@ service_description: 服务描述
 service_executable_path: C:\app\myapp.exe
 ```
 
-### 🔧 可选字段 — 基础
+### 可选字段 — 基础
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -89,7 +89,7 @@ service_executable_path: C:\app\myapp.exe
 | `service_password` | string | `""` | 服务账户密码（仅自定义账户需要） |
 | `env` | object | 无 | 注入目标进程的环境变量 |
 
-### 🔄 可选字段 — 生命周期与钩子
+### 可选字段 — 生命周期与钩子
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -99,7 +99,7 @@ service_executable_path: C:\app\myapp.exe
 | `prestart_command` | string | 无 | 启动前钩子（`cmd /c` 语义，失败不阻断；超时 60s 强杀） |
 | `poststop_command` | string | 无 | 停止后钩子（注入 `WINSGF_CHILD_PID` / `WINSGF_CHILD_EXIT_CODE`） |
 
-### ⬇️ 可选字段 — 启动前下载
+### 可选字段 — 启动前下载
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -110,7 +110,7 @@ service_executable_path: C:\app\myapp.exe
 
 > 安全提示：`http://` 且未提供 `download_sha256` 时，`fail_on_error=true` 直接拒绝启动（防明文传输被篡改）。
 
-### 📝 可选字段 — 日志
+### 可选字段 — 日志
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -120,13 +120,13 @@ service_executable_path: C:\app\myapp.exe
 | `log_max_backup_count` | int | `5` | 滚动保留的备份份数 |
 | `log_split_out_err` | bool | `false` | 子进程 stderr 单独写入 `yyyy-MM-dd.err.log` |
 
-### 📦 可选字段 — 独立模式（inplace）
+### 可选字段 — 独立模式（inplace）
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `deploy_inplace` | bool | `false` | 原地注册：不复制宿主到 ProgramData，直接用当前 `silanes64.exe` 注册；YAML 必须与 exe 同名同目录（以实际 exe 文件名为准）。适合嵌入自有项目独立使用；不参与开机宿主升级与清理，框架升级需自行到官网 Releases 下载新版 `silanes64.exe` |
 
-### 📄 完整示例
+### 完整示例
 
 ```yaml
 service_name: my-service
@@ -162,21 +162,21 @@ log_split_out_err: true
 2. **运行时**：SCM 启动服务时读取 YAML 并拉起目标进程；若配置 `download_url`，启动前先确保目标文件就绪（含 SHA-256 校验）。
 3. **日志**：子进程 stdout/stderr 与宿主生命周期事件写入 `logs\yyyy-MM-dd.log`（互斥串行化；支持大小滚动与 stderr 分流）。
 
-### ♻️ 服务恢复
+### 服务恢复
 
 - SCM 层：目标进程崩溃后按 `restart_delay_ms` 延迟自动重启（最多 2 次），失败计数在 `failure_reset_sec` 周期后重置；
 - 宿主层：子进程**非零退出码**异常退出时自动重启（最多 3 次），超限则停止服务。
 
-### 🪝 钩子（Hooks）
+### 钩子（Hooks）
 
 - **prestart**（`prestart_command`）：拉起目标前执行，`cmd /c` 语义支持管道 / 重定向；失败不阻断，超时 60 秒强杀（防止钩子卡死触发 SCM 30 秒启动超时）。
 - **poststop**（`poststop_command`）：目标停止后执行，注入 `WINSGF_CHILD_PID` / `WINSGF_CHILD_EXIT_CODE`；失败仅告警。
 
-### 🌙 优雅关闭
+### 优雅关闭
 
 停止服务或关机时：GUI 程序接收 `WM_CLOSE`（枚举全部顶层窗口）→ 控制台程序接收 `Ctrl+C`（广播到共享控制台，宿主注册忽略处理器防误杀）→ 10 秒超时后强杀；`kill_process_tree=true`（默认）连整棵进程树一并终止。
 
-### 🧩 独立模式（inplace）
+### 独立模式（inplace）
 
 `deploy_inplace: true` 时 `--install` 把当前 exe **原地注册**为服务：
 
@@ -184,7 +184,7 @@ log_split_out_err: true
 - `service_name` 必须等于实际 exe 文件名（如 `silanes64`，exe 改名则以其实际文件名为准），否则 SCM 无法分派；
 - 适合嵌入自有项目独立使用；不参与开机宿主升级与清理，需开发者自行到[官网 Releases](https://github.com/NXRKYMANE/Silanes/releases) 下载新版 `silanes64.exe` 手动升级。
 
-### 📡 服务更新程序
+### 服务更新程序
 
 安装包会自动注册 **服务更新程序**（`Silanes Service Updater`），开机后自动升级所有已注册的服务宿主并清理残留：
 
@@ -209,7 +209,7 @@ log_split_out_err: true
 
 脚本从 `rust\Cargo.toml` 读取版本号，自动同步到 `installer.iss`（含版权年份）。测试失败会终止流水线；跳过测试用 `.\BUILD.ps1 -SkipTests`。
 
-### 🛠️ 单独构建
+### 单独构建
 
 ```powershell
 Set-Location rust
@@ -222,7 +222,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 
 预构建的安装包可在 [Releases](https://github.com/NXRKYMANE/Silanes/releases) 页面获取。
 
-### 📦 安装包
+### 安装包
 
 | 安装包 | 说明 |
 |---|---|
@@ -230,7 +230,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 
 安装包将 `silanes64.exe` 安装到 `%ProgramFiles%\Silanes\`，注册控制面板卸载条目与开机服务更新程序。
 
-### ✨ 安装器特性
+### 安装器特性
 
 - 将 `silanes64.exe` 安装到 `%ProgramFiles%\Silanes\` 并加入系统 PATH
 - 附带 HTML 格式中英文 README
@@ -239,7 +239,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 - 自动检测旧版本：高版本静默升级、同版本询问重装、低版本警告降级
 - 完成页可选在浏览器中打开 README；安装完成后提示重启系统
 
-### ⚠️ Inno Setup 集成注意事项
+### Inno Setup 集成注意事项
 
 在自己的 Inno Setup 安装包中嵌入 Silanes 时，注意以下常见问题：
 
