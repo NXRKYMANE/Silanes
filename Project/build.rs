@@ -32,6 +32,6 @@ fn main() {
     res.set("LegalCopyright", &format!("Copyright (C) {} NXRKYMANE SOFTWARE", year));
     // 语言元数据固定为英文（en-US），避免随编译环境变化
     res.set_language(0x0409);
-    res.set_icon("../misc/images/Proj.ico");
+    res.set_icon("../Misc/images/Proj.ico");
     res.compile().unwrap();
 }

@@ -6,7 +6,7 @@
 
 - **单一 Rust 实现**：Rust（edition 2024）实现，产物为 `silanes64.exe`。
 - **字符串内联**：提示文案与日志字符串直接写在各自使用处的代码中，修改文案直接改源码。
-- **版本号**：版本以 `rust/Cargo.toml` 为唯一来源，`BUILD.ps1` 自动同步到 `installer.iss`。
+- **版本号**：版本以 `Project/Cargo.toml` 为唯一来源，`BUILD.ps1` 自动同步到 `installer.iss`。
 
 ## 开发流程
 

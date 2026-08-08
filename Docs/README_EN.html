@@ -82,7 +82,7 @@
 <table>
 <tr><th>Item</th><th>Detail</th></tr>
 <tr><td>Implementation</td><td>Rust (edition 2024, self-contained, single file)</td></tr>
-<tr><td>Artifact</td><td><code>rust\publish\silanes64.exe</code></td></tr>
+<tr><td>Artifact</td><td><code>Publish\silanes64.exe</code></td></tr>
 <tr><td>Size</td><td>~3.5 MB</td></tr>
 <tr><td>Installer</td><td><code>silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></td></tr>
 <tr><td>Build tools</td><td>Rust stable + MSVC</td></tr>
@@ -91,7 +91,7 @@
 <h2>Quick Start</h2>
 
 <pre><code># Install (requires administrator)
-silanes64.exe -m --install &lt;svc.yaml&gt;
+silanes64.exe -m --install &lt;svc.yml&gt;
 
 # Manage (the sil alias is available after a framework install; the -m prefix is optional)
 silanes64.exe -m --start     &lt;my-service&gt;
@@ -216,6 +216,54 @@ log_max_size_mb: 10
 log_max_backup_count: 5
 log_split_out_err: true</code></pre>
 
+<h2>Scripts as Services (Interpreter + Script Path)</h2>
+
+<p>Silanes treats the service target as an "executable". To run a .py / .ps1 / .bat / .cmd script as a service, simply put the <strong>interpreter</strong> in <code>service_executable_path</code> and the script path plus arguments in <code>service_executable_args</code> — the host manages it like any other process: exit codes, auto-restart, logging and graceful shutdown all work as usual.</p>
+
+<blockquote>The service process default working directory is <code>C:\Windows\System32</code>; always use absolute paths inside scripts (or <code>cd</code> yourself).</blockquote>
+
+<h3>Python Scripts</h3>
+
+<pre><code>service_name: py-worker
+service_display_name: Python Worker
+service_description: Python script service
+service_executable_path: C:\Python312\python.exe
+service_executable_args: "C:\app\worker.py --interval 30"
+service_start_mode: automatic
+env:
+  PYTHONUNBUFFERED: "1"    # disable output buffering so logs flush in real time</code></pre>
+
+<p>To bind a virtual environment, just swap the interpreter path: <code>service_executable_path: C:\app\.venv\Scripts\python.exe</code>.</p>
+
+<h3>PowerShell Scripts</h3>
+
+<pre><code>service_name: ps-worker
+service_display_name: PS Worker
+service_description: PowerShell script service
+service_executable_path: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+service_executable_args: "-NoProfile -ExecutionPolicy Bypass -File C:\app\worker.ps1"</code></pre>
+
+<p>For PowerShell 7 use <code>C:\Program Files\PowerShell\7\pwsh.exe</code> with the same arguments. Scripts must be pure background logic — avoid interactive calls like <code>Read-Host</code> (the service environment has no interactive session).</p>
+
+<h3>Batch Scripts</h3>
+
+<pre><code>service_name: bat-worker
+service_display_name: Bat Worker
+service_description: Batch script service
+service_executable_path: C:\Windows\System32\cmd.exe
+service_executable_args: "/c cd /d C:\app &amp;&amp; worker.bat"</code></pre>
+
+<p>Batch scripts should end with <code>exit /b &lt;code&gt;</code> to return a real exit code; otherwise the host sees the exit code of the last command.</p>
+
+<h3>Behavior &amp; Notes</h3>
+
+<ul>
+<li><strong>Exit-code restart</strong>: when a script exits with a non-zero code, the host restarts it automatically (up to 3 times) and stops the service when the limit is exceeded; the SCM layer backs this up with <code>restart_delay_ms</code>.</li>
+<li><strong>Graceful shutdown</strong>: on stop, the interpreter receives <code>Ctrl+C</code> (cmd / python forward it), force-killed after a 10-second timeout; <code>kill_process_tree=true</code> (default) also terminates the whole tree.</li>
+<li><strong>Quote nesting</strong>: <code>service_executable_args</code> is spliced into the command line verbatim — keep inner quotes for paths with spaces, e.g. <code>service_executable_args: "\"C:\Program Files\App\worker.py\""</code>.</li>
+<li><strong>Permissions</strong>: when switching <code>service_account</code> (e.g. <code>NT AUTHORITY\NetworkService</code>), mind that account's read/write access to the script directory.</li>
+</ul>
+
 <h2>How It Works</h2>
 
 <ol>
@@ -277,14 +325,14 @@ log_split_out_err: true</code></pre>
 
 <p><strong>Pipeline</strong>: build Rust → Rust unit tests → compile the installer with ISCC (Inno Setup 7).</p>
 
-<p>The script reads the version from <code>rust\Cargo.toml</code> and automatically syncs it (plus the copyright year) into <code>installer.iss</code>. A failing test aborts the pipeline; use <code>.\BUILD.ps1 -SkipTests</code> to skip testing.</p>
+<p>The script reads the version from <code>Project\Cargo.toml</code> and automatically syncs it (plus the copyright year) into <code>installer.iss</code>. A failing test aborts the pipeline; use <code>.\BUILD.ps1 -SkipTests</code> to skip testing.</p>
 
 <h3>Build Individually</h3>
 
-<pre><code>Set-Location rust
-cargo build --release                    # → rust\target\release\silanes64.exe
-Copy-Item target\release\silanes64.exe publish\silanes64.exe
-ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></pre>
+<pre><code>Set-Location Project
+cargo build --release                    # → Project\target\release\silanes64.exe
+Copy-Item target\release\silanes64.exe ..\Publish\silanes64.exe
+ISCC installer.iss                    # → Publish\silanes-win-x64-setup-v&lt;VERSION&gt;.exe</code></pre>
 
 <h2>Installer Deployment</h2>
 
@@ -324,7 +372,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 <h2>Project Structure</h2>
 
 <pre><code>Silanes/
-├── rust/                      # Rust implementation
+├── Project/                   # Rust implementation
 │   ├── main.rs                # Entry: argument parsing and routing
 │   ├── service_core.rs        # Core: CLI, SCM API, Service Updater
 │   ├── service_host.rs        # Service host: launches target process + graceful stop
@@ -334,10 +382,10 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 │   ├── Cargo.toml             # Project config (release speed optimizations)
 │   ├── Cargo.lock             # Dependency lock file
 │   └── installer.iss          # Inno Setup install script
-├── docs/                      # Chinese &amp; English HTML docs
+├── Docs/                      # Chinese &amp; English HTML docs
 │   ├── README_CN.html         # Chinese HTML documentation (shipped with installers)
 │   └── README_EN.html         # English HTML documentation (shipped with installers)
-├── misc/                      # Misc resources
+├── Misc/                      # Misc resources
 │   ├── sil.cmd                # sil shortcut alias (copied by the installer)
 │   └── images/                # Icons and images
 │       ├── Proj.ico           # Program icon (installer + distribution)
@@ -345,9 +393,10 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 │       ├── Background.bmp     # Installer wizard background
 │       ├── Rust.bmp           # Installer wizard small image
 │       └── Rust.png           # Project image
+├── Publish/                   # Build artifacts (exe + installer, not committed)
 ├── BUILD.ps1                  # One-click build script (Rust build + tests + installer)
 ├── .github/                   # GitHub community templates (issues / PR)
-├── AGENTS.md                  # AI collaboration rules
+├── CLAUDE.md                  # AI collaboration rules
 ├── CODE_OF_CONDUCT.md         # Code of conduct
 ├── CONTRIBUTING.md            # Contributing guidelines
 ├── SECURITY.md                # Security policy
@@ -360,11 +409,11 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 <p>Rust automated tests cover input validation, startup-mode parsing, log cleanup, process-tree collection, ACL permission checks, downloading, and other core logic:</p>
 
 <pre><code># Rust (38 tests, incl. a real process-tree integration test)
-Set-Location rust
+Set-Location Project
 cargo test</code></pre>
 
 <ul>
-<li>Tests are consolidated in <code>rust\service_tests.rs</code>; the test build never ships in the release binary;</li>
+<li>Tests are consolidated in <code>Project\service_tests.rs</code>; the test build never ships in the release binary;</li>
 <li>Security boundaries such as path traversal, control-character injection, and SDDL permission checks are covered.</li>
 </ul>
 

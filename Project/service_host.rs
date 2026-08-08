@@ -28,10 +28,16 @@ const GRACEFUL_TIMEOUT_SECS: u64 = 10;
 const MAX_RESTART_ATTEMPTS: i32 = 3;
 /// prestart 钩子超时（毫秒），防止钩子卡死触发 SCM 30 秒启动超时
 const HOOK_PRESTART_TIMEOUT_MS: u64 = 60_000;
-/// poststop 钩子超时（毫秒），防止钩子卡死阻塞服务停止
+/// poststop 钩子超时（毫秒）
 const HOOK_POSTSTOP_TIMEOUT_MS: u64 = 30_000;
 /// 下载超时（秒），覆盖整个下载过程
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
+
+/// 宿主配置路径: 优先 .yml（部署统一后缀），兼容 .yaml（旧部署 / inplace 双支持）
+fn config_path_next_to(exe: &std::path::Path) -> PathBuf {
+    let yml = Path::new(exe).with_extension("yml");
+    if yml.exists() { yml } else { Path::new(exe).with_extension("yaml") }
+}
 
 /// 服务宿主 — 由 SCM 启动，读取 YAML 配置并启动目标进程
 pub struct ServiceHost {
@@ -94,7 +100,7 @@ impl ServiceHost {
     pub fn on_start(&mut self) -> bool {
         let process_path = crate::service_core::get_own_path();
         // 与 Path.ChangeExtension 等价（对非 ASCII 路径也安全，不依赖手工切片）
-        let config_path = std::path::Path::new(&process_path).with_extension("yaml");
+        let config_path = config_path_next_to(std::path::Path::new(&process_path));
 
         if !config_path.exists() {
             self.write_log("host", &f("Service config file not found: {0}", &[&config_path.display().to_string()]));
@@ -282,7 +288,7 @@ impl ServiceHost {
 
     /// 异常重启: 重新读取部署目录下的 yaml 配置后再次启动（等价 ReloadConfig）
     fn try_restart_child(&mut self) -> Result<(), String> {
-        let config_path = Path::new(&crate::service_core::get_own_path()).with_extension("yaml");
+        let config_path = config_path_next_to(Path::new(&crate::service_core::get_own_path()));
         let config = std::panic::catch_unwind(|| crate::service_core::load_config(&config_path))
             .map_err(|p| crate::service_core::panic_msg(&*p, "Unknown error"))?;
         self.start_child_process(&config)

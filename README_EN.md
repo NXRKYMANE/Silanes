@@ -24,7 +24,7 @@ Silanes is implemented in Rust (edition 2024) and compiled into a self-contained
 | Item | Detail |
 |---|---|
 | Implementation | Rust (edition 2024, self-contained, single file) |
-| Artifact | `rust\publish\silanes64.exe` |
+| Artifact | `Publish\silanes64.exe` |
 | Size | ~3.5 MB |
 | Installer | `silanes-win-x64-setup-v<VERSION>.exe` |
 | Build tools | Rust stable + MSVC |
@@ -33,7 +33,7 @@ Silanes is implemented in Rust (edition 2024) and compiled into a self-contained
 
 ```powershell
 # Install (requires administrator)
-sil --install <svc.yaml>
+sil --install <svc.yml>
 
 # Manage (the sil alias is available after a framework install; the -m prefix is optional)
 sil --start     <my-service>
@@ -156,6 +156,58 @@ log_max_backup_count: 5
 log_split_out_err: true
 ```
 
+## 📜 Scripts as Services (Interpreter + Script Path)
+
+Silanes treats the service target as an "executable". To run a .py / .ps1 / .bat / .cmd script as a service, simply put the **interpreter** in `service_executable_path` and the script path plus arguments in `service_executable_args` — the host manages it like any other process: exit codes, auto-restart, logging and graceful shutdown all work as usual.
+
+> The service process default working directory is `C:\Windows\System32`; always use absolute paths inside scripts (or `cd` yourself).
+
+### Python Scripts
+
+```yaml
+service_name: py-worker
+service_display_name: Python Worker
+service_description: Python script service
+service_executable_path: C:\Python312\python.exe
+service_executable_args: "C:\app\worker.py --interval 30"
+service_start_mode: automatic
+env:
+  PYTHONUNBUFFERED: "1"    # disable output buffering so logs flush in real time
+```
+
+To bind a virtual environment, just swap the interpreter path: `service_executable_path: C:\app\.venv\Scripts\python.exe`.
+
+### PowerShell Scripts
+
+```yaml
+service_name: ps-worker
+service_display_name: PS Worker
+service_description: PowerShell script service
+service_executable_path: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+service_executable_args: "-NoProfile -ExecutionPolicy Bypass -File C:\app\worker.ps1"
+```
+
+For PowerShell 7 use `C:\Program Files\PowerShell\7\pwsh.exe` with the same arguments. Scripts must be pure background logic — avoid interactive calls like `Read-Host` (the service environment has no interactive session).
+
+### Batch Scripts
+
+```yaml
+service_name: bat-worker
+service_display_name: Bat Worker
+service_description: Batch script service
+service_executable_path: C:\Windows\System32\cmd.exe
+service_executable_args: "/c cd /d C:\app && worker.bat"
+```
+
+Batch scripts should end with `exit /b <code>` to return a real exit code; otherwise the host sees the exit code of the last command.
+
+### Behavior & Notes
+
+- **Exit-code restart**: when a script exits with a non-zero code, the host restarts it automatically (up to 3 times) and stops the service when the limit is exceeded; the SCM layer backs this up with `restart_delay_ms`.
+- **Graceful shutdown**: on stop, the interpreter receives `Ctrl+C` (cmd / python forward it), force-killed after a 10-second timeout; `kill_process_tree=true` (default) also terminates the whole tree.
+- **Quote nesting**: `service_executable_args` is spliced into the command line verbatim — keep inner quotes for paths with spaces, e.g. `service_executable_args: "\"C:\Program Files\App\worker.py\""`.
+- **Permissions**: when switching `service_account` (e.g. `NT AUTHORITY\NetworkService`), mind that account's read/write access to the script directory.
+
 ## 🔍 How It Works
 
 1. **Install**: Silanes deploys a copy of itself alongside the YAML config to `C:\ProgramData\Silanes\svcs\<name>\` (directory ACL is tightened to SYSTEM / Administrators only) and registers it via the SCM API. Reinstalling an existing name compares the source (executable path + arguments); a different source is rejected to avoid hijacking an unrelated service.
@@ -207,15 +259,15 @@ The one-click build script produces 2 artifacts (executable + installer):
 
 **Pipeline**: build Rust → Rust unit tests → compile the installer with ISCC (Inno Setup 7).
 
-The script reads the version from `rust\Cargo.toml` and automatically syncs it (plus the copyright year) into `installer.iss`. A failing test aborts the pipeline; use `.\BUILD.ps1 -SkipTests` to skip testing.
+The script reads the version from `Project\Cargo.toml` and automatically syncs it (plus the copyright year) into `installer.iss`. A failing test aborts the pipeline; use `.\BUILD.ps1 -SkipTests` to skip testing.
 
 ### Build Individually
 
 ```powershell
-Set-Location rust
-cargo build --release                    # → rust\target\release\silanes64.exe
-Copy-Item target\release\silanes64.exe publish\silanes64.exe
-ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v<VERSION>.exe
+Set-Location Project
+cargo build --release                    # → Project\target\release\silanes64.exe
+Copy-Item target\release\silanes64.exe ..\Publish\silanes64.exe
+ISCC installer.iss                    # → Publish\silanes-win-x64-setup-v<VERSION>.exe
 ```
 
 ## 💿 Installer Deployment
@@ -252,7 +304,7 @@ When embedding Silanes in your own Inno Setup installer, watch out for these com
 
 ```
 Silanes/
-├── rust/                      # Rust implementation
+├── Project/                   # Rust implementation
 │   ├── main.rs                # Entry: argument parsing and routing
 │   ├── service_core.rs        # Core: CLI, SCM API, Service Updater
 │   ├── service_host.rs        # Service host: launches target process + graceful stop
@@ -262,10 +314,10 @@ Silanes/
 │   ├── Cargo.toml             # Project config (release speed optimizations)
 │   ├── Cargo.lock             # Dependency lock file
 │   └── installer.iss          # Inno Setup install script
-├── docs/                      # Chinese & English HTML docs
+├── Docs/                      # Chinese & English HTML docs
 │   ├── README_CN.html         # Chinese HTML documentation (shipped with installers)
 │   └── README_EN.html         # English HTML documentation (shipped with installers)
-├── misc/                      # Misc resources
+├── Misc/                      # Misc resources
 │   ├── sil.cmd                # sil shortcut alias (copied by the installer)
 │   └── images/                # Icons and images
 │       ├── Proj.ico           # Program icon (installer + distribution)
@@ -273,9 +325,10 @@ Silanes/
 │       ├── Background.bmp     # Installer wizard background
 │       ├── Rust.bmp           # Installer wizard small image
 │       └── Rust.png           # Project image
+├── Publish/                   # Build artifacts (exe + installer, not committed)
 ├── BUILD.ps1                  # One-click build script (Rust build + tests + installer)
 ├── .github/                   # GitHub community templates (issues / PR)
-├── AGENTS.md                  # AI collaboration rules
+├── CLAUDE.md                  # AI collaboration rules
 ├── CODE_OF_CONDUCT.md         # Code of conduct
 ├── CONTRIBUTING.md            # Contributing guidelines
 ├── SECURITY.md                # Security policy
@@ -290,11 +343,11 @@ Rust automated tests cover input validation, startup-mode parsing, log cleanup, 
 
 ```powershell
 # Rust (38 tests, incl. a real process-tree integration test)
-Set-Location rust
+Set-Location Project
 cargo test
 ```
 
-- Tests are consolidated in `rust\service_tests.rs`; the test build never ships in the release binary;
+- Tests are consolidated in `Project\service_tests.rs`; the test build never ships in the release binary;
 - Security boundaries such as path traversal, control-character injection, and SDDL permission checks are covered.
 
 ## ✅ Requirements

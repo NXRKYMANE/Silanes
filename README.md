@@ -24,7 +24,7 @@ Silanes 由 Rust（edition 2024）实现，编译为自包含单文件 `silanes6
 | 项 | 说明 |
 |---|---|
 | 实现 | Rust（edition 2024，自包含、单文件） |
-| 产物 | `rust\publish\silanes64.exe` |
+| 产物 | `Publish\silanes64.exe` |
 | 体积 | 约 3.5 MB |
 | 安装包 | `silanes-win-x64-setup-v<版本>.exe` |
 | 构建工具 | Rust stable + MSVC |
@@ -33,7 +33,7 @@ Silanes 由 Rust（edition 2024）实现，编译为自包含单文件 `silanes6
 
 ```powershell
 # 安装服务（需管理员权限）
-sil --install <svc.yaml>
+sil --install <svc.yml>
 
 # 管理服务（框架安装后可用 sil 快捷别名，-m 前缀可省略）
 sil --start     <my-service>
@@ -156,6 +156,58 @@ log_max_backup_count: 5
 log_split_out_err: true
 ```
 
+## 📜 脚本作为服务（解释器 + 脚本路径）
+
+Silanes 的服务目标是「可执行程序」。要让 .py / .ps1 / .bat / .cmd 脚本作为服务，只需把**解释器**填进 `service_executable_path`，脚本路径与参数填进 `service_executable_args`——宿主按普通进程管理，退出码、自动重启、日志、优雅关闭全部照常生效。
+
+> 服务进程默认工作目录是 `C:\Windows\System32`，脚本内请用绝对路径（或自行 `cd`）。
+
+### Python 脚本
+
+```yaml
+service_name: py-worker
+service_display_name: Python Worker
+service_description: Python 脚本服务
+service_executable_path: C:\Python312\python.exe
+service_executable_args: "C:\app\worker.py --interval 30"
+service_start_mode: automatic
+env:
+  PYTHONUNBUFFERED: "1"    # 关闭输出缓冲，日志实时落盘
+```
+
+绑定虚拟环境只需换解释器路径：`service_executable_path: C:\app\.venv\Scripts\python.exe`。
+
+### PowerShell 脚本
+
+```yaml
+service_name: ps-worker
+service_display_name: PS Worker
+service_description: PowerShell 脚本服务
+service_executable_path: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+service_executable_args: "-NoProfile -ExecutionPolicy Bypass -File C:\app\worker.ps1"
+```
+
+PowerShell 7 请用 `C:\Program Files\PowerShell\7\pwsh.exe`，参数不变。脚本需写成纯后台逻辑，避免 `Read-Host` 等交互调用（服务环境无交互界面）。
+
+### 批处理脚本
+
+```yaml
+service_name: bat-worker
+service_display_name: Bat Worker
+service_description: 批处理脚本服务
+service_executable_path: C:\Windows\System32\cmd.exe
+service_executable_args: "/c cd /d C:\app && worker.bat"
+```
+
+批处理请以 `exit /b <code>` 结尾返回真实退出码，否则宿主拿到的是最后一条命令的退出码。
+
+### 行为与注意
+
+- **退出码重启**：脚本以非零退出码退出时，宿主自动重启（最多 3 次），超限停止服务；SCM 层按 `restart_delay_ms` 兜底。
+- **优雅关闭**：停止服务时解释器进程接收 `Ctrl+C`（cmd / python 会透传），10 秒超时强杀；`kill_process_tree=true`（默认）连进程树一起终止。
+- **引号嵌套**：args 原样拼接进命令行，路径含空格时保留内层引号，如 `service_executable_args: "\"C:\Program Files\App\worker.py\""`。
+- **权限**：改用 `service_account`（如 `NT AUTHORITY\NetworkService`）时，注意该账户对脚本目录的读写权限。
+
 ## 🔍 工作原理
 
 1. **安装**：Silanes 将自身副本和 YAML 部署到 `C:\ProgramData\Silanes\svcs\<名称>\`（目录 ACL 收紧，仅 SYSTEM / Administrators 可写），经 SCM 注册为服务。重复安装同名服务时比对来源（可执行路径 + 参数），来源不同则拒绝覆盖。
@@ -207,15 +259,15 @@ log_split_out_err: true
 
 **流水线**：构建 Rust → Rust 单元测试 → ISCC 编译安装包（Inno Setup 7）。
 
-脚本从 `rust\Cargo.toml` 读取版本号，自动同步到 `installer.iss`（含版权年份）。测试失败会终止流水线；跳过测试用 `.\BUILD.ps1 -SkipTests`。
+脚本从 `Project\Cargo.toml` 读取版本号，自动同步到 `installer.iss`（含版权年份）。测试失败会终止流水线；跳过测试用 `.\BUILD.ps1 -SkipTests`。
 
 ### 单独构建
 
 ```powershell
-Set-Location rust
-cargo build --release                    # → rust\target\release\silanes64.exe
-Copy-Item target\release\silanes64.exe publish\silanes64.exe
-ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v<版本>.exe
+Set-Location Project
+cargo build --release                    # → Project\target\release\silanes64.exe
+Copy-Item target\release\silanes64.exe ..\Publish\silanes64.exe
+ISCC installer.iss                    # → Publish\silanes-win-x64-setup-v<版本>.exe
 ```
 
 ## 💿 安装包部署
@@ -252,7 +304,7 @@ ISCC installer.iss                    # → rust\publish\silanes-win-x64-setup-v
 
 ```
 Silanes/
-├── rust/                      # Rust 实现
+├── Project/                   # Rust 实现
 │   ├── main.rs                # 入口：参数解析与路由
 │   ├── service_core.rs        # 核心：CLI、SCM API、服务更新程序
 │   ├── service_host.rs        # 服务宿主：拉起目标进程 + 优雅停止
@@ -262,10 +314,10 @@ Silanes/
 │   ├── Cargo.toml             # 项目配置（release 速度优化）
 │   ├── Cargo.lock             # 依赖锁定文件
 │   └── installer.iss          # Inno Setup 安装脚本
-├── docs/                      # 中英文 HTML 文档
+├── Docs/                      # 中英文 HTML 文档
 │   ├── README_CN.html         # 中文 HTML 文档（随安装包分发）
 │   └── README_EN.html         # 英文 HTML 文档（随安装包分发）
-├── misc/                      # 杂项资源
+├── Misc/                      # 杂项资源
 │   ├── sil.cmd                # sil 快捷别名（安装器复制到安装目录）
 │   └── images/                # 图标与图片
 │       ├── Proj.ico           # 程序图标（安装器 + 分发）
@@ -273,9 +325,10 @@ Silanes/
 │       ├── Background.bmp     # 安装向导背景图
 │       ├── Rust.bmp           # 安装向导小图
 │       └── Rust.png           # 项目图片
+├── Publish/                   # 构建产物（exe + 安装包，不提交）
 ├── BUILD.ps1                  # 一键构建脚本（Rust 构建与测试 + 安装包）
 ├── .github/                   # GitHub 社区模板（Issue / PR）
-├── AGENTS.md                  # AI 协作规则
+├── CLAUDE.md                  # AI 协作规则
 ├── CODE_OF_CONDUCT.md         # 行为准则
 ├── CONTRIBUTING.md            # 贡献指南
 ├── SECURITY.md                # 安全政策
@@ -290,11 +343,11 @@ Rust 自动化测试覆盖输入校验、启动模式解析、日志清理、进
 
 ```powershell
 # Rust（38 个测试，含真实进程树集成测试）
-Set-Location rust
+Set-Location Project
 cargo test
 ```
 
-- 测试集中在 `rust\service_tests.rs`，测试构建不进入正式产物；
+- 测试集中在 `Project\service_tests.rs`，测试构建不进入正式产物；
 - 覆盖路径穿越、控制字符注入、SDDL 权限判定等安全边界。
 
 ## ✅ 环境要求

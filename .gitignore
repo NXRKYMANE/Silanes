@@ -1,4 +1,4 @@
 .vscode/
-rust/target/
-rust/publish/
+Project/target/
+Publish/
 .tmp*/

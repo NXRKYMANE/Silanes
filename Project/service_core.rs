@@ -300,16 +300,20 @@ fn install_command(args: &[&str]) {
     let inplace = config.deploy_inplace;
     let own_exe = get_own_path();
     if inplace {
-        let expected_yaml = Path::new(&own_exe).with_extension("yaml");
+        // 配置名双支持: 与 exe 同名，后缀 .yaml 或 .yml 均可（宿主读取时双支持）
+        let exe_stem = Path::new(&own_exe)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let expected_names = [format!("{}.yaml", exe_stem), format!("{}.yml", exe_stem)];
         // canonicalize 会产生 \\?\ 前缀，与 own_exe 的普通路径前缀不一致，先去除再比较
-        let config_path_abs = strip_verbatim_prefix(&config_path);
-        let expected_str = expected_yaml.to_string_lossy().to_lowercase();
-        let config_str = config_path_abs.to_string_lossy().to_lowercase();
-        if expected_str != config_str {
-            let file_name = expected_yaml.file_name()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_else(|| "config.yaml".to_string());
-            error(&f("deploy_inplace: config file must be named '{0}' next to the executable (host reads its own .yaml by name).", &[&file_name]));
+        let config_file = strip_verbatim_prefix(&config_path)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+        if !expected_names.iter().any(|n| n.to_lowercase() == config_file) {
+            error(&f("deploy_inplace: config file must be named '{0}' or '{1}' next to the executable (host reads its own .yaml/.yml by name).",
+                &[&format!("{}.yaml", exe_stem), &format!("{}.yml", exe_stem)]));
             return;
         }
         // 原地注册宿主以 LocalSystem 运行，若 EXE 目录允许低权限用户写入（Downloads/Public/工作区等），
@@ -327,9 +331,6 @@ fn install_command(args: &[&str]) {
         }
         // 宿主 scm_svc_name 固定取 exe 文件名（silanes64），SCM 要求注册名与 dispatcher 服务名一致，
         // inplace 不重命名 exe，故服务名必须等于 exe 文件名，否则注册成功却无法启动
-        let exe_stem = Path::new(&own_exe).file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
         if !svc_name.eq_ignore_ascii_case(&exe_stem) {
             error(&f("Application error: {0}",
                 &[&format!("deploy_inplace: service_name must equal the executable file name '{}', otherwise SCM cannot dispatch the service.", exe_stem)]));
@@ -352,7 +353,7 @@ fn install_command(args: &[&str]) {
         } else {
             // 平台部署: 已部署 yaml 可对比时要求可执行路径/参数一致才允许覆盖更新；
             // yaml 缺失/损坏时退回 ImagePath 归属判定，仅 Silanes 部署可覆盖修复
-            let yaml_dest = base_dir(&svc_name).join(format!("{}.yaml", svc_name));
+            let yaml_dest = base_dir(&svc_name).join(format!("{}.yml", svc_name));
             if !can_overwrite_source(yaml_dest.to_str().unwrap_or(""), config_path_str, &svc_name) {
                 error(&f("Service name '{0}' is already registered by a different service. Use a different service_name or uninstall it first.", &[&svc_name]));
             }
@@ -389,7 +390,7 @@ fn install_command(args: &[&str]) {
             error(&f("Service registration failed: {0}", &["Failed to deploy service files"]));
         }
         let exe_dest = base_dir.join(format!("{}.exe", svc_name));
-        let yaml_dest = base_dir.join(format!("{}.yaml", svc_name));
+        let yaml_dest = base_dir.join(format!("{}.yml", svc_name));
         let yaml_ok = write_deployed_yaml(config_path_str, &yaml_dest);
         if std::fs::copy(&own_exe, &exe_dest).is_err() || !yaml_ok
         {
@@ -1279,7 +1280,7 @@ fn cleanup_invalid_service(svc_name: &str) {
         write_updater_log("warn", &f("[{0}] Invalid config ({1}), removing stale service", &[svc_name, "not a Silanes-managed service"]));
         return;
     }
-    let yaml_path = base.join(format!("{}.yaml", svc_name));
+    let yaml_path = base.join(format!("{}.yml", svc_name));
 
     if !yaml_path.exists() {
         write_updater_log("warn", &f("[{0}] Config file missing, removing stale service", &[svc_name]));

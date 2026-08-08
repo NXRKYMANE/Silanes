@@ -2,7 +2,7 @@
 ; 服务更新程序注册与卸载 / PATH 注册
 
 #define MyAppName "Silanes"
-#define MyAppVersion "26.4.0"
+#define MyAppVersion "26.4.1"
 #define MyAppPublisher "Copyright (C) 2026 NXRKYMANE SOFTWARE"
 #define MyAppURL "https://github.com/NXRKYMANE/Silanes"
 #define MyAppExeName "silanes64.exe"
@@ -25,16 +25,16 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputDir=publish
+OutputDir=..\Publish
 OutputBaseFilename=silanes-win-x64-setup-v{#MyAppVersion}
-SetupIconFile=..\misc\images\Proj.ico
+SetupIconFile=..\Misc\images\Proj.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=classic
 DisableWelcomePage=no
-WizardImageFile=..\misc\images\Background.bmp
-WizardSmallImageFile=..\misc\images\Rust.bmp
+WizardImageFile=..\Misc\images\Background.bmp
+WizardSmallImageFile=..\Misc\images\Rust.bmp
 ; 覆盖正在运行的 silanes64.exe（覆盖安装场景）时由 Inno 自动关闭进程，避免文件被占用
 CloseApplications=yes
 RestartApplications=no
@@ -76,10 +76,10 @@ chinesesimp.InstallCancelled=安装已取消。
 
 [Files]
 ; [Setup] CloseApplications=yes 已在覆盖运行中的 silanes64.exe 时自动关闭进程
-Source: "publish\silanes64.exe"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: LogFile('{app}\silanes64.exe')
-Source: "..\misc\images\Proj.ico"; DestDir: "{app}"; DestName: "icon.ico"; Flags: ignoreversion; AfterInstall: LogFile('{app}\icon.ico')
-Source: "..\misc\sil.cmd"; DestDir: "{app}"; DestName: "sil.cmd"; Flags: ignoreversion; AfterInstall: LogFile('{app}\sil.cmd')
-Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: recursesubdirs createallsubdirs ignoreversion; AfterInstall: LogFile('{app}\docs\')
+Source: "..\Publish\silanes64.exe"; DestDir: "{app}"; Flags: ignoreversion; AfterInstall: LogFile('{app}\silanes64.exe')
+Source: "..\Misc\images\Proj.ico"; DestDir: "{app}"; DestName: "icon.ico"; Flags: ignoreversion; AfterInstall: LogFile('{app}\icon.ico')
+Source: "..\Misc\sil.cmd"; DestDir: "{app}"; DestName: "sil.cmd"; Flags: ignoreversion; AfterInstall: LogFile('{app}\sil.cmd')
+Source: "..\Docs\*"; DestDir: "{app}\Docs"; Flags: recursesubdirs createallsubdirs ignoreversion; AfterInstall: LogFile('{app}\Docs\')
 
 [Registry]
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\silanes64.exe"; ValueType: string; ValueName: ""; ValueData: "{app}\silanes64.exe"; Flags: uninsdeletekey
@@ -582,7 +582,7 @@ end;
 function GetDocPath(Param: String): String;
 begin
   if ActiveLanguage = 'chinesesimp' then
-    Result := ExpandConstant('{app}\docs\README_CN.html')
+    Result := ExpandConstant('{app}\Docs\README_CN.html')
   else
-    Result := ExpandConstant('{app}\docs\README_EN.html');
+    Result := ExpandConstant('{app}\Docs\README_EN.html');
 end;
